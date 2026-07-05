@@ -19,7 +19,7 @@ SSH_DIR="${SSH_DIR:-$HOME/.ssh}"
 VERSION="0.1.0"
 INSTALL_PATH="${INSTALL_PATH:-/usr/local/bin/ssh-key-helper}"
 BASH_COMPLETION_NAME="ssh-key-helper"
-UPDATE_URL="${UPDATE_URL:-https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper}"
+UPDATE_URL="${UPDATE_URL:-https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper.sh}"
 
 FORCE=0
 NO_COMPLETION=0

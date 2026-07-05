@@ -15,9 +15,9 @@ It is a client-side helper. It does not edit server-side `sshd_config`, manage `
 Quick install from the public repository:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper -o ssh-key-helper
-sudo bash ssh-key-helper install
-rm ssh-key-helper
+curl -fsSL https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper.sh -o ssh-key-helper.sh
+sudo bash ssh-key-helper.sh install
+rm ssh-key-helper.sh
 ```
 
 Quick update:
@@ -29,9 +29,9 @@ sudo ssh-key-helper update
 Local use without installing:
 
 ```bash
-./ssh-key-helper fix-perms
-./ssh-key-helper test git@github.com
-./ssh-key-helper config user@example.com ~/.ssh/example_key
+./ssh-key-helper.sh fix-perms
+./ssh-key-helper.sh test git@github.com
+./ssh-key-helper.sh config user@example.com ~/.ssh/example_key
 ssh example.com
 ```
 
@@ -84,5 +84,5 @@ Host example.com
 ## Verification
 
 ```bash
-bash -n ssh-key-helper
+bash -n ssh-key-helper.sh
 ```
