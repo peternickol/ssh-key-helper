@@ -12,14 +12,16 @@ It is a client-side helper. It does not edit server-side `sshd_config`, manage `
 
 ## Install
 
-Download the script, review it, then install the `ssh-key-helper` command:
+Download and install the `ssh-key-helper` command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper.sh -o ssh-key-helper.sh
-less ssh-key-helper.sh
 sudo bash ssh-key-helper.sh install
 rm ssh-key-helper.sh
 ```
+
+If you want to inspect the downloaded script first, open `ssh-key-helper.sh`
+before running the `sudo bash ... install` command.
 
 The installed command is:
 
