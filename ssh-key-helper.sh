@@ -1,4 +1,17 @@
 #!/usr/bin/env bash
+#
+# ssh-key-helper
+# -----------------------------------------------------------------------------
+# Client-side SSH helper for local key hygiene.
+#
+# This tool edits only local client state:
+#   - repairs permissions under SSH_DIR, defaulting to ~/.ssh
+#   - writes managed per-host blocks in SSH_DIR/config
+#
+# It does not edit server-side sshd_config, manage authorized_keys, or load keys
+# into ssh-agent.
+# -----------------------------------------------------------------------------
+
 set -Eeuo pipefail
 
 if [[ -t 1 || -t 2 ]] && [[ "${NO_COLOR:-0}" != "1" ]]; then
@@ -136,11 +149,14 @@ fix_perms() {
 
 expand_identity_path() {
   local path="$1"
+  local home_prefix
 
-  case "$path" in
-    "~/"*) printf '%s/%s\n' "$HOME" "${path#"~/"}" ;;
-    *) printf '%s\n' "$path" ;;
-  esac
+  printf -v home_prefix '%c%c' '~' '/'
+  if [[ "${path:0:2}" == "$home_prefix" ]]; then
+    printf '%s/%s\n' "$HOME" "${path:2}"
+  else
+    printf '%s\n' "$path"
+  fi
 }
 
 fix_identity_perms() {
@@ -216,6 +232,7 @@ write_host_config() {
   local host=""
   local config_file="$SSH_DIR/config"
   local temp_file=""
+  local temp_has_content=0
 
   [[ -n "$target" ]] || die "config requires a host, for example: ssh-key-helper config root@example.com ~/.ssh/director"
   [[ -n "$identity_file" ]] || die "config requires an identity file"
@@ -227,9 +244,10 @@ write_host_config() {
   identity_file="${identity_file/#$HOME/~}"
   temp_file="$(mktemp)"
   remove_managed_block "$config_file" "# ssh-key-helper: begin $host" "# ssh-key-helper: end $host" "$temp_file"
+  [[ -s "$temp_file" ]] && temp_has_content=1
 
   {
-    if [[ -s "$temp_file" ]]; then
+    if ((temp_has_content)); then
       printf '\n'
     fi
     printf '# ssh-key-helper: begin %s\n' "$host"
@@ -256,6 +274,7 @@ test_ssh() {
     ssh_options+=(-o IdentitiesOnly=yes -i "$identity_file")
   fi
 
+  # shellcheck disable=SC2029
   ssh "${ssh_options[@]}" "$host"
 }
 

@@ -10,23 +10,52 @@ Repair local SSH key permissions and write explicit per-host SSH client config t
 
 It is a client-side helper. It does not edit server-side `sshd_config`, manage `authorized_keys`, or load keys into `ssh-agent`.
 
-## Usage
+## Install
 
-Quick install from the public repository:
+Download the script, review it, then install the `ssh-key-helper` command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper.sh -o ssh-key-helper.sh
+less ssh-key-helper.sh
 sudo bash ssh-key-helper.sh install
 rm ssh-key-helper.sh
 ```
 
-Quick update:
+The installed command is:
+
+```bash
+/usr/local/bin/ssh-key-helper
+```
+
+Install without bash completion:
+
+```bash
+sudo bash ssh-key-helper.sh install --no-completion
+```
+
+## Update And Uninstall
+
+Update the installed command from GitHub:
 
 ```bash
 sudo ssh-key-helper update
 ```
 
-Local use without installing:
+Update without refreshing bash completion:
+
+```bash
+sudo ssh-key-helper update --no-completion
+```
+
+Uninstall the command and bash completion:
+
+```bash
+sudo ssh-key-helper uninstall
+```
+
+## Local Use
+
+You can also run the script directly without installing it:
 
 ```bash
 ./ssh-key-helper.sh fix-perms
@@ -85,6 +114,7 @@ Host example.com
 
 ```bash
 bash -n ssh-key-helper.sh
+shellcheck ssh-key-helper.sh
 ```
 
 ## License
