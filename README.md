@@ -12,6 +12,22 @@ It is a client-side helper. It does not edit server-side `sshd_config`, manage `
 
 ## Usage
 
+Quick install from the public repository:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper -o ssh-key-helper
+sudo bash ssh-key-helper install
+rm ssh-key-helper
+```
+
+Quick update:
+
+```bash
+sudo ssh-key-helper update
+```
+
+Local use without installing:
+
 ```bash
 ./ssh-key-helper fix-perms
 ./ssh-key-helper test git@github.com
@@ -29,6 +45,22 @@ ssh example.com
 
 `test [host] [identity-file]`
 : Run `ssh -T` against a host. When an identity file is provided, the helper uses `IdentitiesOnly=yes` for that test.
+
+`install [--force] [--no-completion]`
+: Install the current script to `/usr/local/bin/ssh-key-helper` and install bash completion when available.
+
+`update [--no-completion]`
+: Download the latest public script from GitHub, syntax-check it, and install it to `/usr/local/bin/ssh-key-helper`.
+
+`uninstall`
+: Remove `/usr/local/bin/ssh-key-helper` and its bash completion file.
+
+Completion-only helpers:
+
+```bash
+sudo ssh-key-helper install --completion-only
+sudo ssh-key-helper install --uninstall-completion
+```
 
 ## Config Blocks
 
