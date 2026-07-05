@@ -64,6 +64,19 @@ You can also run the script directly without installing it:
 ssh example.com
 ```
 
+## Command Summary
+
+```text
+ssh-key-helper fix-perms
+ssh-key-helper test [host] [identity-file]
+ssh-key-helper config <host> <identity-file>
+ssh-key-helper install [--force] [--no-completion]
+ssh-key-helper update [--no-completion]
+ssh-key-helper uninstall
+ssh-key-helper --help
+ssh-key-helper --version
+```
+
 ## Commands
 
 `fix-perms`
@@ -109,6 +122,13 @@ Host example.com
 
 `SSH_DIR`
 : Override the SSH directory. Defaults to `~/.ssh`.
+
+## Exit Codes
+
+```text
+0  Success
+1  Error, invalid usage, failed SSH command, or failed file operation
+```
 
 ## Verification
 

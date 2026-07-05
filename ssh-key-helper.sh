@@ -34,6 +34,8 @@ INSTALL_PATH="${INSTALL_PATH:-/usr/local/bin/ssh-key-helper}"
 BASH_COMPLETION_NAME="ssh-key-helper"
 UPDATE_URL="${UPDATE_URL:-https://raw.githubusercontent.com/peternickol/ssh-key-helper/master/ssh-key-helper.sh}"
 
+SCRIPT_NAME="$(basename "$0")"
+
 FORCE=0
 NO_COMPLETION=0
 COMPLETION_ONLY=0
@@ -49,13 +51,13 @@ have_cmd() { command -v "$1" >/dev/null 2>&1; }
 usage() {
   cat <<EOF
 Usage:
-  ssh-key-helper [global-options] fix-perms
-  ssh-key-helper [global-options] test [host] [identity-file]
-  ssh-key-helper [global-options] config <host> <identity-file>
-  ssh-key-helper [global-options] install
-  ssh-key-helper [global-options] update
-  ssh-key-helper [global-options] uninstall
-  ssh-key-helper [global-options] help
+  $SCRIPT_NAME [global-options] fix-perms
+  $SCRIPT_NAME [global-options] test [host] [identity-file]
+  $SCRIPT_NAME [global-options] config <host> <identity-file>
+  $SCRIPT_NAME [global-options] install
+  $SCRIPT_NAME [global-options] update
+  $SCRIPT_NAME [global-options] uninstall
+  $SCRIPT_NAME [global-options] help
 
 Commands:
   fix-perms         Set safe permissions on SSH files
@@ -84,7 +86,7 @@ show_version() {
 
 require_root() {
   if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
-    die "must be run as root. Try: sudo ssh-key-helper ${*:-}"
+    die "must be run as root. Try: sudo $SCRIPT_NAME ${*:-}"
   fi
 }
 
@@ -234,7 +236,7 @@ write_host_config() {
   local temp_file=""
   local temp_has_content=0
 
-  [[ -n "$target" ]] || die "config requires a host, for example: ssh-key-helper config root@example.com ~/.ssh/director"
+  [[ -n "$target" ]] || die "config requires a host, for example: $SCRIPT_NAME config user@example.com ~/.ssh/example_key"
   [[ -n "$identity_file" ]] || die "config requires an identity file"
 
   ensure_ssh_dir
@@ -428,6 +430,8 @@ cmd_install() {
   else
     info "Skipping completion installation (--no-completion)."
   fi
+
+  info "Installation complete. Try: ssh-key-helper --version"
 }
 
 download_update_source() {
@@ -474,6 +478,8 @@ cmd_update() {
   else
     info "Skipping completion installation (--no-completion)."
   fi
+
+  info "Update complete. Try: ssh-key-helper --version"
 }
 
 cmd_uninstall() {
