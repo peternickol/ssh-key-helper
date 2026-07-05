@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+if [[ -t 1 || -t 2 ]] && [[ "${NO_COLOR:-0}" != "1" ]]; then
+  C_RESET=$'\033[0m'
+  C_RED=$'\033[31m'
+  C_YELLOW=$'\033[33m'
+  C_GREEN=$'\033[32m'
+  C_CYAN=$'\033[36m'
+else
+  C_RESET=""
+  C_RED=""
+  C_YELLOW=""
+  C_GREEN=""
+  C_CYAN=""
+fi
+
+SSH_DIR="${SSH_DIR:-$HOME/.ssh}"
+
+info() { printf '%b[INFO]%b %s\n' "$C_CYAN" "$C_RESET" "$*"; }
+ok() { printf '%b[OK]%b %s\n' "$C_GREEN" "$C_RESET" "$*"; }
+warn() { printf '%b[WARN]%b %s\n' "$C_YELLOW" "$C_RESET" "$*" >&2; }
+error() { printf '%b[ERROR]%b %s\n' "$C_RED" "$C_RESET" "$*" >&2; }
+die() { error "$*"; exit 1; }
+have_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+usage() {
+  cat <<EOF
+Usage:
+  ssh-key-helper fix-perms
+  ssh-key-helper test [host] [identity-file]
+  ssh-key-helper config <host> <identity-file>
+  ssh-key-helper help
+
+Commands:
+  fix-perms         Set safe permissions on SSH files
+  test [host] [key] Test SSH auth, defaults to git@github.com
+  config <host>     Write an SSH config entry with IdentitiesOnly=yes
+
+Environment:
+  SSH_DIR      Override SSH directory, default: $HOME/.ssh
+EOF
+}
+
+ensure_ssh_dir() {
+  [[ -d "$SSH_DIR" ]] || die "SSH directory not found: $SSH_DIR"
+}
+
+is_private_key() {
+  local file="$1"
+  local name
+  local first_line
+
+  [[ -f "$file" ]] || return 1
+  name="$(basename "$file")"
+  [[ "$name" != *.pub ]] || return 1
+
+  case "$name" in
+    authorized_keys|config|environment|known_hosts|known_hosts.old)
+      return 1
+      ;;
+  esac
+
+  IFS= read -r first_line <"$file" || return 1
+  [[ "$first_line" == "-----BEGIN "*PRIVATE\ KEY----- ]]
+}
+
+private_keys() {
+  local file
+
+  ensure_ssh_dir
+  while IFS= read -r -d '' file; do
+    if is_private_key "$file"; then
+      printf '%s\0' "$file"
+    fi
+  done < <(find "$SSH_DIR" -maxdepth 1 -type f -print0)
+}
+
+fix_perms() {
+  local file
+  local private_count=0
+  local public_count=0
+
+  ensure_ssh_dir
+
+  chmod 700 "$SSH_DIR"
+  info "Set $SSH_DIR to 700"
+
+  while IFS= read -r -d '' file; do
+    chmod 600 "$file"
+    private_count=$((private_count + 1))
+    info "Set private key to 600: $file"
+  done < <(private_keys)
+
+  while IFS= read -r -d '' file; do
+    chmod 644 "$file"
+    public_count=$((public_count + 1))
+    info "Set public key to 644: $file"
+  done < <(find "$SSH_DIR" -maxdepth 1 -type f -name '*.pub' -print0)
+
+  ok "Fixed $private_count private key(s) and $public_count public key(s)."
+}
+
+expand_identity_path() {
+  local path="$1"
+
+  case "$path" in
+    "~/"*) printf '%s/%s\n' "$HOME" "${path#"~/"}" ;;
+    *) printf '%s\n' "$path" ;;
+  esac
+}
+
+fix_identity_perms() {
+  local identity_file="$1"
+  local local_identity_file
+
+  local_identity_file="$(expand_identity_path "$identity_file")"
+  [[ -f "$local_identity_file" ]] || die "Identity file not found: $identity_file"
+  [[ "$local_identity_file" != *.pub ]] || die "Identity file must be a private key, not a .pub file: $identity_file"
+
+  chmod 600 "$local_identity_file"
+  info "Set private key to 600: $local_identity_file"
+}
+
+split_ssh_host() {
+  local value="$1"
+  local user_var="$2"
+  local host_var="$3"
+  local parsed_user=""
+  local parsed_host="$value"
+
+  if [[ "$value" == *@* ]]; then
+    parsed_user="${value%@*}"
+    parsed_host="${value#*@}"
+  fi
+
+  [[ -n "$parsed_host" ]] || die "Host cannot be empty"
+
+  printf -v "$user_var" '%s' "$parsed_user"
+  printf -v "$host_var" '%s' "$parsed_host"
+}
+
+remove_managed_block() {
+  local config_file="$1"
+  local begin_marker="$2"
+  local end_marker="$3"
+  local temp_file="$4"
+  local in_managed_block=0
+  local line
+
+  if [[ -f "$config_file" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      case "$line" in
+        "$begin_marker")
+          in_managed_block=1
+          continue
+          ;;
+        "$end_marker")
+          in_managed_block=0
+          continue
+          ;;
+      esac
+
+      if ((in_managed_block == 0)); then
+        printf '%s\n' "$line" >>"$temp_file"
+      fi
+    done <"$config_file"
+  fi
+}
+
+install_config() {
+  local temp_file="$1"
+  local config_file="$SSH_DIR/config"
+
+  mv "$temp_file" "$config_file"
+  chmod 600 "$config_file"
+}
+
+write_host_config() {
+  local target="${1:-}"
+  local identity_file="${2:-}"
+  local user=""
+  local host=""
+  local config_file="$SSH_DIR/config"
+  local temp_file=""
+
+  [[ -n "$target" ]] || die "config requires a host, for example: ssh-key-helper config root@example.com ~/.ssh/director"
+  [[ -n "$identity_file" ]] || die "config requires an identity file"
+
+  ensure_ssh_dir
+  split_ssh_host "$target" user host
+  fix_identity_perms "$identity_file"
+
+  identity_file="${identity_file/#$HOME/~}"
+  temp_file="$(mktemp)"
+  remove_managed_block "$config_file" "# ssh-key-helper: begin $host" "# ssh-key-helper: end $host" "$temp_file"
+
+  {
+    if [[ -s "$temp_file" ]]; then
+      printf '\n'
+    fi
+    printf '# ssh-key-helper: begin %s\n' "$host"
+    printf 'Host %s\n' "$host"
+    printf '  HostName %s\n' "$host"
+    if [[ -n "$user" ]]; then
+      printf '  User %s\n' "$user"
+    fi
+    printf '  IdentityFile %s\n' "$identity_file"
+    printf '  IdentitiesOnly yes\n'
+    printf '# ssh-key-helper: end %s\n' "$host"
+  } >>"$temp_file"
+
+  install_config "$temp_file"
+  ok "Wrote SSH config for $target in $config_file"
+}
+
+test_ssh() {
+  local host="${1:-git@github.com}"
+  local identity_file="${2:-}"
+  local ssh_options=(-T)
+
+  if [[ -n "$identity_file" ]]; then
+    ssh_options+=(-o IdentitiesOnly=yes -i "$identity_file")
+  fi
+
+  ssh "${ssh_options[@]}" "$host"
+}
+
+main() {
+  local command="${1:-help}"
+  shift || true
+
+  case "$command" in
+    fix-perms) fix_perms "$@" ;;
+    test) test_ssh "$@" ;;
+    config) write_host_config "$@" ;;
+    help|-h|--help) usage ;;
+    *) die "Unknown command: $command" ;;
+  esac
+}
+
+main "$@"
