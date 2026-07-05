@@ -86,3 +86,7 @@ Host example.com
 ```bash
 bash -n ssh-key-helper.sh
 ```
+
+## License
+
+MIT
